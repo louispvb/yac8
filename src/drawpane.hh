@@ -31,6 +31,7 @@ public:
   void render(wxDC & dc);
   void OnKeyDown(wxKeyEvent &evt);
   void OnKeyUp(wxKeyEvent &evt);  
+  void SDTimer(wxCommandEvent &evt);
 
   DECLARE_EVENT_TABLE()
 };

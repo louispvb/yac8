@@ -46,5 +46,6 @@ namespace Interpreter {
   void resume();
   void reset();
   void cycle();
+  void updateTimers();
   void loadROM(std::string fileName);
 }

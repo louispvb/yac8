@@ -16,14 +16,18 @@ RenderTimer::RenderTimer(DrawPane *pane) : wxTimer() {
   RenderTimer::pane = pane;
 }
 void RenderTimer::Notify() {
-  if (!Interpreter::isPaused()) Interpreter::cycle();
-  if (Interpreter::draw) {
-    pane->Refresh();
-    Interpreter::draw = false;
+  if (!Interpreter::isPaused())
+    for (int i = 0; i < 16; ++i) {
+      Interpreter::cycle();
+    if (Interpreter::draw) {
+      pane->Refresh();
+      Interpreter::draw = false;
+    }
   }
+  Interpreter::updateTimers();
 }
 void RenderTimer::start() {
-  wxTimer::Start(5);
+  wxTimer::Start(17);
 }
 
 //------------------------------------------------------------------------------
@@ -36,6 +40,10 @@ END_EVENT_TABLE()
 
 DrawPane::DrawPane(wxFrame* parent) : wxPanel(parent) {
   //Connect(wxEVT_PAINT, wxPaintEventHandler(DrawPane::paintEvent));
+}
+
+void DrawPane::SDTimer(wxCommandEvent &evt) {
+  Interpreter::updateTimers();
 }
 
 void DrawPane::paintEvent(wxPaintEvent& evt) {
@@ -72,14 +80,13 @@ void DrawPane::render(wxDC& dc) {
   }
 }
 
-inline void setKey(int index, uint8_t state) {
-  std::cout<<"called";
+inline void setKey(int index, bool state) {
   Interpreter::key[index] = state;
   Interpreter::pressedKey = index;
   if (Interpreter::isWaiting()) Interpreter::resume();
 }
 
-void setKeys(int keycode, uint8_t x) {
+void setKeys(int keycode, bool x) {
   switch (keycode) {
   case '1': setKey(0x1, x); break;
   case '2': setKey(0x2, x); break;
@@ -105,7 +112,7 @@ void DrawPane::OnKeyDown(wxKeyEvent &evt) {
     evt.Skip();
     return;
   }
-  setKeys(evt.GetKeyCode(), 1);
+  setKeys(evt.GetKeyCode(), true);
 }
 
 void DrawPane::OnKeyUp(wxKeyEvent &evt) {
@@ -113,5 +120,5 @@ void DrawPane::OnKeyUp(wxKeyEvent &evt) {
     evt.Skip();
     return;
   }
-  setKeys(evt.GetKeyCode(), 0);
+  setKeys(evt.GetKeyCode(), false);
 }

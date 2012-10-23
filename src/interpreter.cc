@@ -107,7 +107,8 @@ namespace Interpreter {
     DT = 0;
     PC = ROM_START_OFFSET - 2;
     stack.erase(stack.begin(), stack.end());
-    std::fill(key,key+0x10,false);
+    std::fill(key, key+0x10, false);
+    std::fill(V, V+0x10, 0);
     std::fill(memory + ROM_START_OFFSET, memory + MEMORY_SIZE, 0);
     std::fill(screenBuff, screenBuff + 64*32, 0);
   }
@@ -128,7 +129,6 @@ namespace Interpreter {
   //! Execute one processor cycle
   void cycle() {
     executeOpcode();
-    updateTimers();
-    printDebug();
+    //printDebug();
   }
 }
