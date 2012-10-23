@@ -1,13 +1,13 @@
 dofile "use_wxwidgets.lua"
 
 -- A solution contains projects, and defines the available configurations
-solution "Chip8"
+solution "YAC8"
     configurations { "Debug", "Release" }
     --location "build"
     targetdir "bin"
 
 -- A project defines one build target
-    project "Chip8"
+    project "yac8"
         kind "WindowedApp" --"ConsoleApp"
         language "C++"
         files { "src/**.hh", "src/**.cc" }
