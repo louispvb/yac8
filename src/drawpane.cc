@@ -17,10 +17,13 @@ RenderTimer::RenderTimer(DrawPane *pane) : wxTimer() {
 }
 void RenderTimer::Notify() {
   if (!Interpreter::isPaused()) Interpreter::cycle();
-  pane->Refresh();
+  if (Interpreter::draw) {
+    pane->Refresh();
+    Interpreter::draw = false;
+  }
 }
 void RenderTimer::start() {
-  wxTimer::Start(10);
+  wxTimer::Start(5);
 }
 
 //------------------------------------------------------------------------------

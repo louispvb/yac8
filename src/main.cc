@@ -11,17 +11,12 @@
 #include "main.hh"
 #include "interpreter.hh"
 
-#include <chrono>
-#include <thread>
-
 IMPLEMENT_APP(Chip8)
 
 bool Chip8::OnInit () {
   gui = new EmuGUI(wxT("Chip8"));
   gui->Show(true);
   Interpreter::init();
-  //std::thread * t = new std::thread(interpreterLoop, gui);
-  //t->detach();
   return true;
 }
 

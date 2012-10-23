@@ -92,7 +92,7 @@ namespace Interpreter {
   }
   void resume() {
     run = true;
-    wait = false;
+    opResume();
   }
   bool isPaused() {
     return !run;
@@ -103,7 +103,10 @@ namespace Interpreter {
   //! Reset machine state
   void reset() {
     I = 0;
-    PC = ROM_START_OFFSET;
+    ST = 0;
+    DT = 0;
+    PC = ROM_START_OFFSET - 2;
+    stack.erase(stack.begin(), stack.end());
     std::fill(key,key+0x10,false);
     std::fill(memory + ROM_START_OFFSET, memory + MEMORY_SIZE, 0);
     std::fill(screenBuff, screenBuff + 64*32, 0);

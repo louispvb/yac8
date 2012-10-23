@@ -27,22 +27,24 @@ namespace Interpreter {
   inline uint16_t getNNN() { return OP& 0x0FFF; }
   inline uint8_t & getVX() { return V[getX()]; }
   inline uint8_t & getVY() { return V[getY()]; }
-  inline void next() { PC += 2; }
+
+  //! Fetch and execute next opcode
   void executeOpcode() {
     OP = static_cast<uint16_t>(memory[PC] << 8 | memory[PC + 1]);
     printf("Opcode: %X, ", OP);
     
+    PC += 2;
     opTable[(OP & 0xF000)>>12] ();
   }
   //! Either clear screen or return 
   void op00MM () {
-    if (getN() == 0x0) { //Clear screen
+    if (getNN() == 0xE0) { //Clear screen
       std::fill(screenBuff, screenBuff + 64*32, 0);
-    } else { //Return
+      draw = true;
+    } else if (getNN() == 0xEE) { //Return
       PC = stack.back();
       stack.pop_back();
     }
-    next();
   }
   //! jmp to 0x0NNN
   void op1NNN () {
@@ -55,42 +57,87 @@ namespace Interpreter {
   }
   //! Skips an instruction if VX == NN
   void op3XNN () { 
-    if (getVX() == getNN()) PC += 4;
-    else next();
+    if (getVX() == getNN()) PC += 2;
   }
   //! Skips an instruction if VX != NN
   void op4XNN () { 
-    if (getVX() != getNN()) PC += 4;
-    else next();
+    if (getVX() != getNN()) PC += 2;
   }
   //! Skips an instruction if VX == VY
   void op5XY0 () { 
-    if (getVX() == getVY()) PC += 4;
-    else next();
+    if (getVX() == getVY()) PC += 2;
   }
   //! Sets VX to NN
   void op6XNN () { 
     getVX() = getNN();
-    next();
   }
   //! Adds NN to VX
   void op7XNN () { 
     getVX() += getNN();
-    next();
   }
   //! Lookup and execute 8XYM opcode
   void op8XYM () {
     op8Table[getN()] ();
   }
+  //! Sets VX to VY
+  void op8XY0 () { 
+    getVX() = getVY();
+  }
+  //! Sets VX to VX or VY
+  void op8XY1 () { 
+    getVX() |= getVY();
+  }
+  //! Sets VX to VX and VY
+  void op8XY2 () { 
+    getVX() &= getVY();
+  }
+  //! Sets VX to VX xor VY
+  void op8XY3 () { 
+    getVX() ^= getVY();
+  }
+  //! Adds VY to VX. VF is set to 1 iff carrying, 0 if not
+  void op8XY4 () { 
+    uint8_t x = getX();
+    uint8_t y = getY();
+    if ((0xFF - V[x]) < V[y]) V[0xF] = 1;
+    else V[0xF] = 0;  
+    V[x] += V[y];
+  }
+  //! VY is subtracted from VX. VF set to 0 iff borrow
+  void op8XY5 () { 
+    uint8_t x = getX();
+    uint8_t y = getY();
+    if (V[y] > V[x]) V[0xF] = 0;
+    else V[0xF] = 1;
+    V[x] -= V[y];
+  }
+  //! Shifts VX right by 1. VF set to LSBit of VX before shift
+  void op8XY6 () { 
+    uint8_t x = getX();
+    V[0xF] = V[x] & 0x01;
+    V[x] >>= 1;
+  }
+  //! Sets VX to VY - VX. VF set to 0 iff borrow, 1 otherwise
+  void op8XY7 () { 
+    uint8_t x = getX();
+    uint8_t y = getY();
+    if (V[x] > V[y]) V[0xF] = 0;
+    else V[0xF] = 1;
+    V[x] = V[y] - V[x];
+  }
+  //! Shifts VX left by 1. VF set to MSBit of VX before shift
+  void op8XYE () { 
+    uint8_t x = getX();
+    V[0xF] = V[x] >> 7;
+    V[x] <<= 1;
+  }
   //! Skips next instruction if VX != VY
   void op9XY0 () { 
-    if (getVX() != getVY()) PC +=4;
-    else next();
+    if (getVX() != getVY()) PC += 2;
   }
   //! Sets I to 0x0NNN
   void opANNN () { 
     I = getNNN();
-    next();
   }
   //! jmp to 0x0NNN + V0
   void opBNNN () { 
@@ -99,7 +146,6 @@ namespace Interpreter {
   //! Sets VX to a random number and NN
   void opCXNN () { 
     getVX() = (rand()%256) & getNN();
-    next();
   }
   /* Draw a sprite at (VX, VY) with width of 8px and height of Npx. Each row
    * of 8px is read as bit-coded (with MSBit of each byte displayed on the
@@ -125,117 +171,48 @@ namespace Interpreter {
       }
     }
     draw = true;
-    next();
   }
   void opEXMM () {
     //9E Skips next instruction if the key stored in VX is pressed.
     //A1 Skips next instruction if the key stored in VX isn't pressed.
     if (getNN() == 0x009E) {
-      if (key[getVX()]) PC += 4;
-      else next();
+      if (key[getVX()]) PC += 2;
     } else {
-      if (!key[getVX()]) PC += 4;
-      else next();
+      if (!key[getVX()]) PC += 2;
     }
   }
   //! Lookup and execute FXMM opcode
   void opFXMM () {
     opFTable[getNN()] ();
   } 
-  //! Sets VX to VY
-  void op8XY0 () { 
-    getVX() = getVY();
-    next();
-  }
-  //! Sets VX to VX or VY
-  void op8XY1 () { 
-    getVX() |= getVY();
-    next();
-  }
-  //! Sets VX to VX and VY
-  void op8XY2 () { 
-    getVX() &= getVY();
-    next();
-  }
-  //! Sets VX to VX xor VY
-  void op8XY3 () { 
-    getVX() ^= getVY();
-    next();
-  }
-  //! Adds VY to VX. VF is set to 1 iff carrying, 0 if not
-  void op8XY4 () { 
-    uint8_t x = getX();
-    uint8_t y = getY();
-    if ((0xFF - V[x]) < V[y]) V[0xF] = 1;
-    else V[0xF] = 0;  
-    V[x] += V[y];
-    next();
-  }
-  //! VY is subtracted from VX. VF set to 0 iff borrow
-  void op8XY5 () { 
-    uint8_t x = getX();
-    uint8_t y = getY();
-    if (V[y] > V[x]) V[0xF] = 0;
-    else V[0xF] = 1;
-    V[x] -= V[y];
-    next();
-  }
-  //! Shifts VX right by 1. VF set to LSBit of VX before shift
-  void op8XY6 () { 
-    uint8_t x = getX();
-    V[0xF] = V[x] & 0x01;
-    V[x] >>= 1;
-    next();
-  }
-  //! Sets VX to VY - VX. VF set to 0 iff borrow, 1 otherwise
-  void op8XY7 () { 
-    uint8_t x = getX();
-    uint8_t y = getY();
-    if (V[x] > V[y]) V[0xF] = 0;
-    else V[0xF] = 1;
-    V[x] = V[y] - V[x];
-    next();
-  }
-  //! Shifts VX left by 1. VF set to MSBit of VX before shift
-  void op8XYE () { 
-    uint8_t x = getX();
-    V[0xF] = V[x] >> 7;
-    V[x] <<= 1;
-    next();
-  }
+
   //! Sets VX to the value of DT
   void opFX07 () { 
     getVX() = DT;
-    next();
   }
   //! A key press is awaited and then stored in VX
   void opFX0A () { 
     pause();
     wait = true;
-    getVX() = pressedKey;
-    next();
   }
+  void opResume() { wait = false; getVX() = pressedKey; }
   //! Sets DT to VX
   void opFX15 () { 
     DT = getVX();
-    next();
   }
   //! Sets ST to VX
   void opFX18 () { 
     ST = getVX();
-    next();
   }
   //! Adds VX to I
   void opFX1E () { 
     I += getVX();
-    next();
   }
   /* Sets I to the location of the sprite for the character in VX.
    * Characters 0-F (in hex) are represented by a 4x5 font.
    */
   void opFX29 () {
     I = getVX()*5;
-    next();
   }
   /* Stores the Binary-coded decimal representation of VX, with the most
    * significant of 3 digits at the address in I, the middle digit at 
@@ -246,22 +223,19 @@ namespace Interpreter {
     memory[I]   = vx / 100;
     memory[I+1] = (vx / 10) % 10;
     memory[I+2] = (vx % 100) % 10;
-    next();
   }
   //! Stores V0 to VX in memory starting at address I
   void opFX55 () { 
     for (uint8_t i = 0; i < getX(); ++i)
       memory[I+i] = V[i];
-    next();
   }
   //! Fills V0 to VX with mem vals starting at address I
   void opFX65 () { 
     for (uint8_t i = 0; i < getX(); ++i)
       V[i] = memory[I+i];
-    next();
   }
 
-  void opNULL () {}
+  void opNULL () {throw std::runtime_error("Null Operation encountered");}
 
   void initTables() {
     std::fill(opFTable, opFTable + 0x100, opNULL);

@@ -67,8 +67,6 @@ void EmuGUI::OpenFile(wxCommandEvent& WXUNUSED(event)) {
   if (OpenDialog->ShowModal() == wxID_OK) {
     Interpreter::loadROM(std::string(OpenDialog->GetPath().mb_str()));
     drawPane->SetFocus(); 
-    //MainEditBox->LoadFile(CurrentPath);
-    //SetTitle(wxString("Edit - ") << OpenDialog->GetFilename());
   }
   OpenDialog->Destroy();
 }

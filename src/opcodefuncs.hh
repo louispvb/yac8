@@ -15,4 +15,5 @@ typedef void (*func)();
 namespace Interpreter { 
   void executeOpcode();
   void initTables();
+  void opResume();
 }
