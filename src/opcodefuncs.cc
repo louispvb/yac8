@@ -162,9 +162,11 @@ namespace Interpreter {
       pixel = memory[I+ypos];
       for (int xpos = 0; xpos < 8; ++xpos) {
         if ((pixel & (0x80 >> xpos)) != 0) {
+          if (x+xpos<64 && x+xpos>=0 && y+ypos < 32 && y+ypos >= 0) {
           if (screenBuff[x+xpos+(y+ypos)*64] == 1)
             V[0xF] = 1;
           screenBuff[x+xpos+(y+ypos)*64] ^= 1;
+          }
         }
       }
     }
