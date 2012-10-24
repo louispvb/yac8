@@ -84,30 +84,29 @@ namespace Interpreter {
   }
   //! Sets VX to VX or VY
   void op8XY1 () { 
-    getVX() = getVX() | getVY();
+    getVX() |= getVY();
   }
   //! Sets VX to VX and VY
   void op8XY2 () { 
-    getVX() = getVX() & getVY();
+    getVX() &= getVY();
   }
   //! Sets VX to VX xor VY
   void op8XY3 () { 
-    getVX() = getVX() ^ getVY();
+    getVX() ^= getVY();
   }
-  //! Adds VY to VX. VF is set to 1 iff carrying, 0 if not
-  void op8XY4 () { 
-    uint8_t x = getX();
-    uint8_t y = getY();
-    if ((0xFF - V[x]) < V[y]) V[0xF] = 1;
-    else V[0xF] = 0;  
-    V[x] += V[y];
+  //! VX = VX + VY, VF = carry if 1 else 0
+  void op8XY4 () {
+    int i = static_cast<int>(getVX()) + static_cast<int>(getVY());
+    if (i > 255) V[0xF] = 1;
+    else V[0xF] = 0;
+    getVX() = i;
   }
-  //! VY is subtracted from VX. VF set to 0 iff borrow
+  //! VX = VX - VY. VF set to 0 iff borrow
   void op8XY5 () { 
     uint8_t x = getX();
     uint8_t y = getY();
-    if (V[y] > V[x]) V[0xF] = 0;
-    else V[0xF] = 1;
+    if (V[x] >= V[y]) V[0xF] = 1;
+    else V[0xF] = 0;
     V[x] -= V[y];
   }
   //! Shifts VX right by 1. VF set to LSBit of VX before shift
@@ -116,25 +115,25 @@ namespace Interpreter {
     V[0xF] = V[x] & 0x01;
     V[x] >>= 1;
   }
-  //! Sets VX to VY - VX. VF set to 0 iff borrow, 1 otherwise
+  //! VX = VY - VX. VF set to 0 iff borrow, 1 otherwise
   void op8XY7 () { 
     uint8_t x = getX();
     uint8_t y = getY();
-    if (V[x] > V[y]) V[0xF] = 0;
-    else V[0xF] = 1;
+    if (V[y] >= V[x]) V[0xF] = 1;
+    else V[0xF] = 0;
     V[x] = V[y] - V[x];
   }
   //! Shifts VX left by 1. VF set to MSBit of VX before shift
   void op8XYE () { 
     uint8_t x = getX();
-    V[0xF] = V[x] >> 7;
+    V[0xF] = (V[x] >> 7) & 0x01;
     V[x] <<= 1;
   }
   //! Skips next instruction if VX != VY
   void op9XY0 () { 
     if (getVX() != getVY()) skip();
   }
-  //! Sets I to 0x0NNN
+  //! I = 0x0NNN
   void opANNN () { 
     I = getNNN();
   }
@@ -185,7 +184,7 @@ namespace Interpreter {
     opFTable[getNN()] ();
   } 
 
-  //! Sets VX to the value of DT
+  //! VX = DT
   void opFX07 () { 
     getVX() = DT;
   }
@@ -195,19 +194,18 @@ namespace Interpreter {
     wait = true;
   }
   void opResume() { wait = false; getVX() = pressedKey; }
-  //! Sets DT to VX
+  //! DT = VX
   void opFX15 () { 
     DT = getVX();
   }
-  //! Sets ST to VX
+  //! ST = VX
   void opFX18 () { 
     ST = getVX();
   }
   //! Adds VX to I
   void opFX1E () {
-    if ((I + getVX()) > 0xFFF) V[0xF] = 1;
+    if ((I += getVX()) > 0xFFF) V[0xF] = 1;
     else V[0xF] = 0;
-    I += getVX();
   }
   /* Sets I to the location of the sprite for the character in VX.
    * Characters 0-F (in hex) are represented by a 4x5 font.
@@ -221,21 +219,23 @@ namespace Interpreter {
    */
   void opFX33 () {
     uint8_t vx = getVX();
-    memory[I]   = vx / 100;
-    memory[I+1] = (vx / 10) % 10;
-    memory[I+2] = (vx % 100) % 10;
+    memory[I]   = (vx-(vx%100)) / 100;
+    vx -= memory[I] * 100;
+    memory[I+1] = (vx - (vx % 10)) / 10;
+    vx -= memory[I+1] * 10;
+    memory[I+2] = vx;
   }
   //! Stores V0 to VX in memory starting at address I
   void opFX55 () { 
     for (uint8_t i = 0; i <= getX(); ++i)
       memory[I+i] = V[i];
-    I += getX() + 1;
+    //I += getX() + 1;
   }
   //! Fills V0 to VX with mem vals starting at address I
   void opFX65 () { 
     for (uint8_t i = 0; i <= getX(); ++i)
       V[i] = memory[I+i];
-    I += getX() + 1;
+    //I += getX() + 1;
   }
 
   void opNULL () {throw std::runtime_error("Null opcode encountered");}
